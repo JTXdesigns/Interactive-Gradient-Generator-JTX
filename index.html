@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Interactive Gradient Generator V2</title>
+  <title>Gradient Generator</title>
   <link rel="stylesheet" href="style.css" />
   <style>
 @import url('https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&display=swap');  </style>
@@ -64,39 +64,49 @@
 </div>
       <div class="sliderGroup">
         <label for="blurSlider">Blur Strength</label>
-        <input type="range" id="blurSlider" min="0" max="200" value="90" />
+        <input type="range" id="blurSlider" min="0" max="300" value="140" />
       </div>
       <div class="sliderGroup">
         <label for="radiusSlider">Circle Radius</label>
-        <input type="range" id="radiusSlider" min="10" max="200" value="100" />
+        <input type="range" id="radiusSlider" min="0" max="400" value="110" />
       </div>
       <div class="sliderGroup">
         <label for="shadowSlider">Shadow Blur</label>
-        <input type="range" id="shadowSlider" min="0" max="50" value="10" />
+        <input type="range" id="shadowSlider" min="0" max="100" value="4" />
       </div>
       <div class="sliderGroup">
         <label for="smoothnessSlider">Movement Smoothness</label>
-        <input type="range" id="smoothnessSlider" min="1" max="20" value="7" />
+        <input type="range" id="smoothnessSlider" min="1" max="50" value="6.2" />
       </div>
       <div class="sliderGroup">
         <label for="speedSlider">Circle Speed</label>
-        <input type="range" id="speedSlider" min="0.1" max="5" step="0.1" value="1.5" />
+        <input type="range" id="speedSlider" min="0.1" max="6" step="0.1" value="1.8" />
       </div>
       <div class="sliderGroup">
-        <label for="circleCountSlider">Circles: <span id="circleCountValue">120</span></label>
-        <input type="range" id="circleCountSlider" min="10" max="200" value="120" />
+        <label for="circleCountSlider">Circles: <span id="circleCountValue">150</span></label>
+        <input type="range" id="circleCountSlider" min="10" max="500" value="150" />
       </div>
       <button id="resetDefaultsBtn">Reset Sliders</button>
     </div>
     <!-- Embed Generator UI -->
 <div id="embedExportPanel" class="mini-panel">
+  <div class="panelHeader">
   <h3>Export Embed Code</h3>
-  <label><input type="checkbox" id="minifyCheckbox" /> Minify</label>
+  <button class="collapseBtn">−</button>
+</div>
+  
+    <textarea id="shareableURL" readonly></textarea>
+ 
   <button id="copyShareURLBtn">Copy Shareable URL</button>
-  <button onclick="generateEmbedCode()">Generate Embed</button>
+  <button onclick="generateEmbedCode()">Generate Embed Code</button>
   <textarea id="embedOutput" readonly style="width:100%;height:250px;margin-top:10px;"></textarea>
   <button id="copyEmbedBtn">Copy to Clipboard</button>
 </div>
+<div class="mini-panel">
+<button onclick="window.open('https://audreyji.com', '_blank', 'noopener')">
+  Designed by Audrey
+</button>
+
 
   </div>
 
