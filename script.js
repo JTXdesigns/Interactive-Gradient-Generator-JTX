@@ -206,19 +206,19 @@ const resetPaletteSlidersBtn = document.getElementById("resetPaletteSlidersBtn")
 blurSlider.addEventListener("input", () => {
   blurAmount = parseInt(blurSlider.value);
   glassEffect.style.backdropFilter = `blur(${blurAmount}px)`;
-  
+  updateShareableURLBox();
 });
 radiusSlider.addEventListener("input", () => {
   circleRadius = parseInt(radiusSlider.value);
-  
+  updateShareableURLBox();
 });
 shadowSlider.addEventListener("input", () => {
   shadowBlur = parseInt(shadowSlider.value);
-  
+  updateShareableURLBox();
 });
 smoothnessSlider.addEventListener("input", () => {
   smoothnessFactor = parseFloat(smoothnessSlider.value);
-  
+  updateShareableURLBox();
 });
 speedSlider.addEventListener("input", () => {
   speedFactor = parseFloat(speedSlider.value);
@@ -226,13 +226,13 @@ speedSlider.addEventListener("input", () => {
     p.dx = (Math.random() - 0.5) * speedFactor;
     p.dy = (Math.random() - 0.5) * speedFactor;
   });
-  
+  updateShareableURLBox();
 });
 circleCountSlider.addEventListener("input", () => {
   numPoints = parseInt(circleCountSlider.value);
   circleCountValue.textContent = numPoints;
   initPoints(numPoints);
-  
+  updateShareableURLBox();
 });
 
 // ========== Palette UI ==========
@@ -263,7 +263,7 @@ function updateColorUI() {
 
       label.textContent = colors[i];
       if (i === 0) document.body.style.backgroundColor = colors[0];
-      
+      updateShareableURLBox();
     });
 
     li.appendChild(label);
@@ -348,7 +348,7 @@ function applyAdjustments() {
   const satShift = parseInt(saturationSlider.value) || 0;   // -100..+100
   colors = getAdjustedColors(hueShift, satShift, lightShift);
   updateColorUI();
-  
+  updateShareableURLBox();
 }
 
 resetPaletteSlidersBtn.addEventListener("click", () => {
@@ -411,6 +411,175 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// ========== Embed (snapshot current adjusted state) ==========
+function generateEmbedCode() {
+  const embedColors = colors.map(c => `'${c}'`).join(", ");
+  const embedCode = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fluid Gradient Background (Embed)</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:${colors[0]}; }
+  #gradientCanvas { position:fixed; inset:0; width:100vw; height:100vh; display:block; }
+  #glassEffect { position:fixed; inset:0; backdrop-filter: blur(${blurAmount}px); pointer-events:none; }
+</style>
+</head>
+<body>
+<canvas id="gradientCanvas"></canvas>
+<div id="glassEffect"></div>
+<script>
+  (function(){
+    const canvas = document.getElementById('gradientCanvas');
+    const ctx = canvas.getContext('2d');
+    function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    window.addEventListener('resize', resize, { passive: true }); resize();
+
+    const blurAmount = ${blurAmount};
+    const circleRadius = ${circleRadius};
+    const shadowBlur = ${shadowBlur};
+    const numPoints = ${numPoints};
+    const smoothnessFactor = ${smoothnessFactor};
+    const speedFactor = ${speedFactor};
+    const colors = [${embedColors}];
+
+    let colorProgress = new Array(numPoints).fill(0.5);
+    let points = [];
+    let mouseX = canvas.width / 2;
+    let mouseY = canvas.height / 2;
+    let isMouseMoving = false;
+    let mouseInactiveTimer = null;
+
+    const glass = document.getElementById('glassEffect');
+    if (glass && glass.style) glass.style.backdropFilter = 'blur(' + blurAmount + 'px)';
+
+    function hexToRgb(hex){ return { r:parseInt(hex.substr(1,2),16), g:parseInt(hex.substr(3,2),16), b:parseInt(hex.substr(5,2),16) }; }
+    function interpolateColors(c1,c2,t){
+      const a=hexToRgb(c1), b=hexToRgb(c2);
+      return 'rgb(' + Math.round(a.r+(b.r-a.r)*t) + ', ' + Math.round(a.g+(b.g-a.g)*t) + ', ' + Math.round(a.b+(b.b-a.b)*t) + ')';
+    }
+    function getGradientColor(progress, offset){
+      const count = colors.length - 1;
+      const t = (progress + offset) * (count - 1);
+      const i = Math.floor(t) + 1;
+      const next = (i + 1 > count) ? 1 : i + 1;
+      return interpolateColors(colors[i], colors[next], t - Math.floor(t));
+    }
+
+    function initPoints(count){
+      points = []; colorProgress = new Array(count).fill(0.5);
+      for (let i=0;i<count;i++){
+        points.push({
+          x: Math.random()*canvas.width,
+          y: Math.random()*canvas.height,
+          dx: (Math.random()-0.5)*speedFactor,
+          dy: (Math.random()-0.5)*speedFactor,
+          randomOffset: Math.random()*0.2,
+          isMovingToMouse: false
+        });
+      }
+    }
+    initPoints(numPoints);
+
+    document.addEventListener('mousemove', (e)=>{
+      mouseX = e.clientX; mouseY = e.clientY;
+      isMouseMoving = true;
+      clearTimeout(mouseInactiveTimer);
+      mouseInactiveTimer = setTimeout(()=> isMouseMoving = false, 1000);
+    }, { passive: true });
+
+    function draw(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for (let i=0;i<points.length;i++){
+        const p = points[i];
+        const dist = Math.hypot(mouseX - p.x, mouseY - p.y);
+        const t = dist / Math.hypot(canvas.width, canvas.height);
+        if (isMouseMoving) colorProgress[i] += (t - colorProgress[i]) * 0.05;
+
+        const color = getGradientColor(colorProgress[i], p.randomOffset);
+        const maxDistForPush = 160;
+
+        if (dist < maxDistForPush) {
+          const angle = Math.atan2(mouseY - p.y, mouseX - p.x);
+          const smooth = 1 - t;
+          p.x -= Math.cos(angle) * smoothnessFactor * smooth;
+          p.y -= Math.sin(angle) * smoothnessFactor * smooth;
+        }
+
+        p.x += p.dx; p.y += p.dy;
+
+        if (p.x < -${circleRadius}) p.x = canvas.width + ${circleRadius};
+        if (p.x > canvas.width + ${circleRadius}) p.x = -${circleRadius};
+        if (p.y < -${circleRadius}) p.y = canvas.height + ${circleRadius};
+        if (p.y > canvas.height + ${circleRadius}) p.y = -${circleRadius};
+
+        ctx.shadowBlur = ${shadowBlur};
+        ctx.shadowColor = color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, ${circleRadius}, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+</script>
+</body>
+</html>`;
+  const out = document.getElementById("embedOutput");
+  if (out) out.value = embedCode;
+}
+
+// ========== Shareable URL ==========
+function getSharableURL() {
+  const params = new URLSearchParams();
+  params.set("viewOnly", "true");
+  params.set("blur", blurAmount);
+  params.set("radius", circleRadius);
+  params.set("shadow", shadowBlur);
+  params.set("count", numPoints);
+  params.set("smoothness", smoothnessFactor);
+  params.set("speed", speedFactor);
+
+  // Save base + offsets
+  params.set("baseColors", baseColors.map(c => c.replace('#', '')).join(','));
+  params.set("hue", parseInt(hueSlider.value) || 0);
+  params.set("sat", parseInt(saturationSlider.value) || 0);
+  params.set("light", parseInt(brightnessSlider.value) || 0);
+
+  // Legacy adjusted (for old links)
+  params.set("colors", colors.map(c => c.replace('#', '')).join(','));
+
+  return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+}
+function updateShareableURLBox() {
+  const el = document.getElementById("shareableURL");
+  if (el) el.value = getSharableURL();
+}
+
+document.getElementById("copyShareURLBtn").addEventListener("click", () => {
+  const url = getSharableURL();
+  const box = document.getElementById("shareableURL");
+  if (box) box.value = url;
+  navigator.clipboard.writeText(url).then(() => {
+    alert("Shareable URL copied to clipboard!");
+  }).catch(err => {
+    console.error("Failed to copy URL:", err);
+    alert("Failed to copy. Try manually.");
+  });
+});
+
+document.getElementById("copyEmbedBtn").addEventListener("click", () => {
+  const embedCode = document.getElementById("embedOutput").value;
+  navigator.clipboard.writeText(embedCode).then(() => {
+    alert("Embed code copied to clipboard!");
+  }).catch(err => {
+    console.error("Failed to copy text: ", err);
+    alert("Failed to copy. Please try manually.");
+  });
+});
 
 // Range fill UI nicety
 document.querySelectorAll('input[type="range"]').forEach(slider => {
